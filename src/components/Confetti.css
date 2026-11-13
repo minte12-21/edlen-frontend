@@ -1,0 +1,3 @@
+.cf { position: fixed; inset: 0; pointer-events: none; z-index: 7000; overflow: hidden; }
+.cf i { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 2px; opacity: 0; animation: cf-fall linear forwards; }
+@keyframes cf-fall { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 1; transform: translateY(110vh) rotate(720deg); } }

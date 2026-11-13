@@ -1,0 +1,12 @@
+{
+  "name": "Edlen",
+  "short_name": "Edlen",
+  "description": "Pick, pay and win. Campus prize draws.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04230f",
+  "theme_color": "#0a3a1b",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,8 @@
+.co-sum { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 20px; background: #fff; box-shadow: 0 2px 10px rgba(15,31,20,.1); margin-bottom: 16px; }
+.co-ico { width: 54px; height: 54px; border-radius: 16px; background: #d3f2dc; display: grid; place-items: center; font-size: 28px; flex: none; overflow: hidden; }
+.co-ico img { width: 100%; height: 100%; object-fit: cover; }
+.co-sum b { font-size: 24px; }
+.co-sum small { display: block; color: var(--muted); font-weight: 700; font-size: 13px; }
+.co-price { margin-left: auto; text-align: right; font-weight: 800; font-size: 20px; }
+.co-secure { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; margin-top: 12px; }
+.co-as { padding: 12px 14px; border-radius: 14px; background: #e3f2e8; color: #0b6b2e; font-weight: 700; margin-bottom: 14px; }

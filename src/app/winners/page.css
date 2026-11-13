@@ -1,0 +1,12 @@
+.wn-prize { margin: 18px 0 10px; font-size: 18px; font-weight: 800; }
+.wn-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 22px; color: #3a2a00; box-shadow: 0 8px 22px rgba(0,0,0,.3); }
+.wn-card + .wn-card { margin-top: 10px; }
+.wn-card.r1 { background: linear-gradient(135deg, #ffe9a6, #f7c948); }
+.wn-card.r2 { background: linear-gradient(135deg, #f2f4f5, #c9d0d4); color: #2b3336; }
+.wn-card.r3 { background: linear-gradient(135deg, #f6d3b0, #d9a06a); color: #3b2410; }
+.wn-card.rn { background: linear-gradient(135deg, #e5f3ea, #bcd9c6); color: #12301d; }
+.wn-medal { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 18px; background: rgba(255,255,255,.55); flex: none; }
+.wn-body b { display: block; font-size: 18px; }
+.wn-body small { font-weight: 700; opacity: .8; }
+.wn-me { margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #0e7a33; color: #fff; font-size: 12px; font-weight: 800; }
+.wn-wait { text-align: center; color: #b9d3c1; padding: 18px; border-radius: 18px; background: rgba(255,255,255,.06); }

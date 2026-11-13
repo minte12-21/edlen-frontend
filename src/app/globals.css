@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --g950: #031a0b; --g900: #04230f; --g800: #0a3a1b; --g700: #0f5a2a; --g500: #16a34a; --g400: #22c55e;
+  --glow: #7cfc4a; --gold: #ffc83d; --mint: #e8f5ec; --paper: #f7fbf8; --ink: #0f1f14; --muted: #5b6b61; --red: #e5484d;
+  --radius: 22px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-latin), var(--font-ethiopic), system-ui, sans-serif;
+  color: #fff; min-height: 100dvh;
+  background: radial-gradient(1200px 600px at 50% -10%, #11602d 0%, transparent 60%), #021208;
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+input, textarea, select { font: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+:focus-visible { outline: 3px solid var(--glow); outline-offset: 2px; }
+
+/* The "phone" column: full width on phones, a centred app on desktop */
+.ed-app {
+  max-width: 480px; margin: 0 auto; min-height: 100dvh; position: relative;
+  padding: 0 16px 112px;
+  background: linear-gradient(180deg, #0b3d1d 0%, #062a14 45%, #04230f 100%);
+}
+@media (min-width: 520px) { .ed-app { box-shadow: 0 0 0 1px rgba(124,252,74,.12), 0 0 80px rgba(34,197,94,.18); } }
+
+/* Shared building blocks, all prefixed ed- */
+.ed-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px;
+  border-radius: 18px; font-weight: 800; font-size: 17px; padding: 0 20px; transition: transform .12s ease, filter .12s ease;
+}
+.ed-btn:active { transform: scale(.98); }
+.ed-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ed-btn-primary { background: linear-gradient(180deg, #25c75a, #0e7a33); box-shadow: 0 8px 24px rgba(34,197,94,.35), inset 0 1px 0 rgba(255,255,255,.35); color: #fff; }
+.ed-btn-gold { background: linear-gradient(180deg, #ffd96b, #f0a800); color: #3a2800; box-shadow: 0 8px 24px rgba(255,200,61,.3); }
+.ed-btn-ghost { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
+.ed-btn-danger { background: rgba(229,72,77,.15); border: 1px solid rgba(229,72,77,.5); color: #ff9a9d; }
+.ed-btn-sm { min-height: 42px; font-size: 14px; border-radius: 14px; }
+
+.ed-paper { background: var(--paper); color: var(--ink); border-radius: 26px; padding: 20px; }
+.ed-glass { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: var(--radius); padding: 16px; backdrop-filter: blur(6px); }
+
+.ed-field { display: block; margin-bottom: 12px; }
+.ed-field span { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.ed-input {
+  width: 100%; min-height: 50px; padding: 0 14px; border-radius: 14px; border: 2px solid #d5e6da;
+  background: #fff; color: var(--ink); font-size: 16px;
+}
+.ed-input:focus { border-color: var(--g500); outline: none; }
+textarea.ed-input { padding: 12px 14px; min-height: 90px; resize: vertical; }
+.ed-dark .ed-field span { color: #b9d3c1; }
+.ed-dark .ed-input { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); color: #fff; }
+
+.ed-error { background: rgba(229,72,77,.14); border: 1px solid rgba(229,72,77,.45); color: #ffb4b6; border-radius: 14px; padding: 12px 14px; font-size: 14px; margin: 12px 0; }
+.ed-paper .ed-error { color: #b42327; background: #fdecec; }
+.ed-title { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.ed-sub { color: #b9d3c1; font-size: 14px; line-height: 1.5; }
+.ed-center { text-align: center; }
+.ed-stack > * + * { margin-top: 14px; }
+.ed-page { padding-top: 8px; }
+.ed-back { display: inline-flex; align-items: center; gap: 6px; color: #b9d3c1; font-weight: 700; margin: 6px 0 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

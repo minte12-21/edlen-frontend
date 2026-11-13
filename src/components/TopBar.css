@@ -1,0 +1,25 @@
+/* Fixed to the top while scrolling */
+.tb {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 -16px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: rgba(6, 42, 20, .88);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(124, 252, 74, .12);
+}
+.tb-brand { display: flex; align-items: center; gap: 10px; }
+/* White circle so the green logo is visible */
+.tb-mark {
+  width: 44px; height: 44px; border-radius: 50%; background: #fff; padding: 6px;
+  display: grid; place-items: center; overflow: hidden;
+  box-shadow: 0 0 20px rgba(124, 252, 74, .5);
+}
+.tb-mark img { width: 100%; height: 100%; object-fit: contain; }
+.tb-name { font-size: 20px; font-weight: 800; letter-spacing: -.01em; line-height: 1; }
+.tb-name small { display: block; font-size: 11px; font-weight: 600; color: #9fc4aa; margin-top: 3px; letter-spacing: 0; }
+.tb-right { display: flex; align-items: center; gap: 10px; }
+.tb-avatar {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .12); border: 2px solid rgba(124, 252, 74, .7);
+  box-shadow: 0 0 14px rgba(124, 252, 74, .35); font-weight: 800; font-size: 15px;
+}
