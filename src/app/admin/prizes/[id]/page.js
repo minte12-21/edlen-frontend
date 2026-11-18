@@ -5,15 +5,36 @@ import Link from 'next/link';
 import { api, download } from '@/lib/api';
 import { useApp } from '@/context/Providers';
 
+const EMPTY = { number: '', name: '', phone: '', telegram: '', password: '' };
+
 export default function ManagePrize() {
   const { id } = useParams();
   const router = useRouter();
   const { toast } = useApp();
   const [d, setD] = useState(null);
-  const load = useCallback(() => api(`/admin/prizes/${id}/members`).then(setD).catch((e) => toast(e.message, 'error')), [id, toast]);
+  const [free, setFree] = useState([]);
+  const [f, setF] = useState(EMPTY);
+  const [added, setAdded] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const m = await api(`/admin/prizes/${id}/members`);
+      setD(m);
+      if (m.prize.status === 'ONGOING') {
+        const n = await api(`/prizes/${id}/numbers`);
+        const taken = new Set(n.taken);
+        setFree(Array.from({ length: n.total }, (_, i) => i + 1).filter((x) => !taken.has(x)));
+      } else {
+        setFree([]);
+      }
+    } catch (e) { toast(e.message, 'error'); }
+  }, [id, toast]);
   useEffect(() => { load(); }, [load]);
+
   if (!d) return <p className="ed-sub">Loading…</p>;
   const { prize, members } = d;
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   async function exportXls() { try { await download(`/admin/prizes/${id}/export`, 'edlen.csv'); } catch (e) { toast(e.message, 'error'); } }
   async function end() {
@@ -24,35 +45,92 @@ export default function ManagePrize() {
     if (!confirm('Delete this prize completely? This cannot be undone.')) return;
     try { await api(`/admin/prizes/${id}`, { method: 'DELETE' }); router.push('/admin'); } catch (e) { toast(e.message, 'error'); }
   }
+  async function launch() {
+    if (!confirm('Launch this prize now? People will be able to buy cards.')) return;
+    try { await api(`/admin/prizes/${id}/launch`, { method: 'POST' }); toast('Prize launched'); load(); } catch (e) { toast(e.message, 'error'); }
+  }
+  async function addPerson(e) {
+    e.preventDefault();
+    setBusy(true);
+    setAdded(null);
+    try {
+      const r = await api(`/admin/prizes/${id}/add-member`, { method: 'POST', body: f });
+      setAdded({ phone: f.phone, password: r.password, existing: r.existingUser, number: f.number });
+      setF(EMPTY);
+      load();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { setBusy(false); }
+  }
+
+  const soon = prize.status === 'COMING_SOON';
 
   return (
     <>
       <div className="ad-card">
-        <b style={{ fontSize: 22 }}>{prize.title}</b> <span className="ad-pill">{prize.status}</span>
-        <p className="ed-sub">{prize.sold}/{prize.totalCards} sold · {prize.price} ETB · max {prize.maxPerUser} per person · {d.placesDrawn}/{prize.places.length} places drawn</p>
-        <p className="ed-sub">Draw order: {[...prize.places].sort((a, b) => a.drawOrder - b.drawOrder).map((p) => `${p.rank}. ${p.name}`).join('  →  ')}</p>
+        <b style={{ fontSize: 22 }}>{prize.title}</b> <span className="ad-pill">{soon ? 'COMING SOON' : prize.status}</span>
+        {soon ? (
+          <p className="ed-sub">Visible on the site as “coming soon”. Cards are not on sale yet.</p>
+        ) : (
+          <>
+            <p className="ed-sub">{prize.sold}/{prize.totalCards} sold · {prize.price} ETB · max {prize.maxPerUser} per person · {d.placesDrawn}/{prize.places.length} places drawn</p>
+            <p className="ed-sub">Draw order: {[...prize.places].sort((a, b) => a.drawOrder - b.drawOrder).map((p) => `${p.rank}. ${p.name}`).join('  →  ')}</p>
+          </>
+        )}
         <div className="ad-row">
+          {prize.status !== 'ENDED' && <Link href={`/admin/prizes/${id}/edit`} className="ed-btn ed-btn-ghost ed-btn-sm">Edit</Link>}
+          {soon && <button className="ed-btn ed-btn-primary ed-btn-sm" onClick={launch}>Launch now</button>}
           {prize.status === 'CLOSED' && <Link href={`/draw/${id}`} className="ed-btn ed-btn-gold ed-btn-sm">Open live draw screen</Link>}
-          <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={exportXls}>Export to Excel</button>
-          {prize.status !== 'ENDED' && <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={end}>End</button>}
+          {!soon && <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={exportXls}>Export to Excel</button>}
+          {!soon && prize.status !== 'ENDED' && <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={end}>End</button>}
           <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={del}>Delete</button>
         </div>
         {prize.status === 'ONGOING' && <p className="ed-sub" style={{ marginTop: 10 }}>The draw unlocks when all {prize.totalCards} cards are sold.</p>}
       </div>
-      <div className="ad-table">
-        <table>
-          <thead><tr><th>Card</th><th>Name</th><th>Phone</th><th>Telegram</th><th>Payment</th><th>Result</th></tr></thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.number} className={m.winner ? 'win' : ''}>
-                <td>#{m.number}</td><td>{m.name}</td><td>{m.phone}</td><td>@{m.telegram}</td><td>{m.status}</td>
-                <td>{m.winner ? `🏆 ${m.winner.rank} · ${m.winner.name}` : ''}</td>
-              </tr>
-            ))}
-            {members.length === 0 && <tr><td colSpan="6">No one has joined yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+
+      {prize.status === 'ONGOING' && (
+        <form className="ad-card ed-dark" onSubmit={addPerson}>
+          <b>Add a person without payment</b>
+          <p className="ed-sub" style={{ margin: '4px 0 12px' }}>The card counts as paid and holds the number. If it is drawn, this person wins.</p>
+          <div className="ad-two">
+            <label className="ed-field"><span>Card number</span>
+              <select className="ed-input" required value={f.number} onChange={set('number')} style={{ colorScheme: 'dark' }}>
+                <option value="">Choose a free number</option>
+                {free.map((n) => <option key={n} value={n}>#{n}</option>)}
+              </select>
+            </label>
+            <label className="ed-field"><span>Full name</span><input className="ed-input" required value={f.name} onChange={set('name')} /></label>
+            <label className="ed-field"><span>Phone number</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="0911 123 456" /></label>
+            <label className="ed-field"><span>Telegram username</span><input className="ed-input" required value={f.telegram} onChange={set('telegram')} placeholder="@username" autoCapitalize="none" /></label>
+          </div>
+          <label className="ed-field"><span>Password for them (optional, a simple one is made if empty)</span><input className="ed-input" value={f.password} onChange={set('password')} /></label>
+          <button className="ed-btn ed-btn-primary ed-btn-sm" type="submit" disabled={busy}>{busy ? 'Adding…' : 'Add to this card'}</button>
+          {added && (
+            <div className="ed-error" style={{ background: 'rgba(34,197,94,.15)', borderColor: 'rgba(34,197,94,.5)', color: '#c8f7d6' }}>
+              Added to card #{added.number}. {added.existing
+                ? 'This phone already had an account, so they log in with their own password.'
+                : <>Give them this login: phone <b>{added.phone}</b>, password <b>{added.password}</b></>}
+            </div>
+          )}
+        </form>
+      )}
+
+      {!soon && (
+        <div className="ad-table">
+          <table>
+            <thead><tr><th>Card</th><th>Name</th><th>Phone</th><th>Telegram</th><th>Payment</th><th>Result</th></tr></thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.number} className={m.winner ? 'win' : ''}>
+                  <td>#{m.number}</td><td>{m.name}</td><td>{m.phone}</td><td>@{m.telegram}</td>
+                  <td>{m.manual ? 'PAID · manual' : m.status}</td>
+                  <td>{m.winner ? `🏆 ${m.winner.rank} · ${m.winner.name}` : ''}</td>
+                </tr>
+              ))}
+              {members.length === 0 && <tr><td colSpan="6">No one has joined yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

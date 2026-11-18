@@ -8,13 +8,14 @@ import { useApp } from '@/context/Providers';
 
 export default function PrizeRow({ prize }) {
   const { t } = useApp();
+  const live = prize.status !== 'COMING_SOON' && prize.totalCards > 0;
   return (
     <Link href={`/prize/${prize.id}`} className="pr">
       <div className="pr-img">{prize.imageUrl ? <img src={img(prize.imageUrl)} alt="" /> : '🎁'}</div>
       <div className="pr-body">
         <b>{prize.title}</b>
         <StatusBadge status={prize.status} />
-        <div className="pr-meta">{prize.price.toLocaleString()} ETB · {t('cards_left', { n: prize.left })}</div>
+        {live && <div className="pr-meta">{prize.price.toLocaleString()} ETB · {t('cards_left', { n: prize.left })}</div>}
       </div>
       <Icon name="arrow" size={20} />
     </Link>

@@ -39,6 +39,22 @@ export default function Providers({ children }) {
     })();
   }, []);
 
+  // Keep every open tab and the server in agreement about who is logged in
+  useEffect(() => {
+    const signedOut = () => setUser(null);
+    const otherTab = (e) => {
+      if (e.key !== 'edlen_token') return;
+      if (!e.newValue) setUser(null);
+      else api('/me').then((d) => setUser(d.user)).catch(() => setUser(null));
+    };
+    window.addEventListener('edlen:unauthorized', signedOut);
+    window.addEventListener('storage', otherTab);
+    return () => {
+      window.removeEventListener('edlen:unauthorized', signedOut);
+      window.removeEventListener('storage', otherTab);
+    };
+  }, []);
+
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
   const setLang = useCallback((l) => { setLangState(l); localStorage.setItem('edlen_lang', l); }, []);
@@ -48,9 +64,10 @@ export default function Providers({ children }) {
     return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
   }, [lang]);
 
+  // The same message is never stacked twice
   const toast = useCallback((msg, type = 'ok') => {
     const id = ++idRef.current;
-    setToasts((l) => [...l, { id, msg, type }]);
+    setToasts((l) => (l.some((x) => x.msg === msg) ? l : [...l, { id, msg, type }]));
     setTimeout(() => setToasts((l) => l.filter((x) => x.id !== id)), 3200);
   }, []);
 

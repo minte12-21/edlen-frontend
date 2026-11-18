@@ -1,5 +1,6 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// Cloudinary images are full URLs. Old local uploads start with /uploads and live on the backend.
 export const img = (u) => (!u ? null : u.startsWith('http') ? u : API_URL + u);
 
 export const getToken = () => (typeof window === 'undefined' ? null : localStorage.getItem('edlen_token'));
@@ -19,7 +20,14 @@ export async function api(path, { method = 'GET', body, form } = {}) {
     throw new Error('Cannot reach the server. Check your internet and try again.');
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: res.status });
+  if (!res.ok) {
+    // The server no longer accepts our login (expired, or the database was reset): sign out cleanly
+    if (res.status === 401 && token) {
+      setToken(null);
+      window.dispatchEvent(new Event('edlen:unauthorized'));
+    }
+    throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: res.status });
+  }
   return data;
 }
 

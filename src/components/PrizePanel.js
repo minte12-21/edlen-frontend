@@ -19,6 +19,7 @@ export default function PrizePanel({ prize }) {
   const [initial, setInitial] = useState(null);
   const [taken, setTaken] = useState(null);
 
+  const soon = prize.status === 'COMING_SOON';
   const canBuy = prize.status === 'ONGOING' && prize.left > 0;
 
   async function loadTaken() {
@@ -36,6 +37,7 @@ export default function PrizePanel({ prize }) {
   }
   const free = taken ? Array.from({ length: prize.totalCards }, (_, i) => i + 1).filter((n) => !taken.has(n)) : [];
   const photo = img(prize.imageUrl);
+  const soonMsg = lang === 'am' ? 'ይህ ሽልማት በቅርቡ ይከፈታል። ተመልሰው ይመልከቱ!' : 'This prize opens soon. Check back!';
 
   return (
     <div>
@@ -49,12 +51,16 @@ export default function PrizePanel({ prize }) {
         </div>
       </section>
 
-      <div className="pp-stats">
-        <div className="pp-stat"><b>{prize.price.toLocaleString()} <small>ETB</small></b><span>{t('stat_price')}</span></div>
-        <div className="pp-stat"><b>{prize.left}</b><span>{t('stat_left')}</span></div>
-        <div className="pp-stat"><b>{prize.places.length}</b><span>{t('stat_places')}</span></div>
-        <div className="pp-stat"><b>{prize.status === 'CLOSED' ? t('stat_live') : t('stat_soon')}</b><span>{t('stat_draw')}</span></div>
-      </div>
+      {!soon && (
+        <div className="pp-stats">
+          <div className="pp-stat"><b>{prize.price.toLocaleString()} <small>ETB</small></b><span>{t('stat_price')}</span></div>
+          <div className="pp-stat"><b>{prize.left}</b><span>{t('stat_left')}</span></div>
+          <div className="pp-stat"><b>{prize.places.length}</b><span>{t('stat_places')}</span></div>
+          <div className="pp-stat"><b>{prize.status === 'CLOSED' ? t('stat_live') : t('stat_soon')}</b><span>{t('stat_draw')}</span></div>
+        </div>
+      )}
+
+      {soon && <div className="pp-note" style={{ marginTop: 14 }}>{soonMsg}</div>}
 
       {prize.places.length > 0 && (
         <section className="pp-places">
