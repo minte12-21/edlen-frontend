@@ -2,6 +2,7 @@ import { Outfit, Noto_Sans_Ethiopic } from 'next/font/google';
 import './globals.css';
 import Providers from '@/context/Providers';
 import AppShell from '@/components/AppShell';
+import RegisterSW from '@/components/RegisterSW';
 
 const latin = Outfit({ subsets: ['latin'], variable: '--font-latin', display: 'swap' });
 const ethiopic = Noto_Sans_Ethiopic({ subsets: ['ethiopic'], variable: '--font-ethiopic', display: 'swap' });
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${latin.variable} ${ethiopic.variable}`}>
       <body>
+        <RegisterSW />
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

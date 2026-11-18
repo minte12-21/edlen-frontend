@@ -1,12 +1,18 @@
 {
+  "id": "/",
   "name": "Edlen",
   "short_name": "Edlen",
   "description": "Pick, pay and win. Campus prize draws.",
+  "lang": "en",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#04230f",
   "theme_color": "#0a3a1b",
+  "categories": ["entertainment", "shopping"],
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/logo.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "1254x1254", "type": "image/png", "purpose": "maskable" }
   ]
 }
