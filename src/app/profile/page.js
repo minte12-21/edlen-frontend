@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import './page.css';
 import Icon from '@/components/Icon';
+import PasswordInput from '@/components/PasswordInput';
 import { api } from '@/lib/api';
 import { useApp } from '@/context/Providers';
 
@@ -53,7 +54,7 @@ export default function Profile() {
         <label className="ed-field"><span>{t('f_name')}</span><input className="ed-input" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
         <label className="ed-field"><span>{t('f_tg')}</span><input className="ed-input" required value={f.telegram} onChange={(e) => setF({ ...f, telegram: e.target.value })} autoCapitalize="none" /></label>
-        <label className="ed-field"><span>{t('f_pass')}</span><input className="ed-input" type="password" minLength={6} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="••••••" autoComplete="new-password" /></label>
+        <label className="ed-field"><span>{t('f_pass')}</span><PasswordInput minLength={6} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="••••••" autoComplete="new-password" /></label>
         {error && <div className="ed-error">{error}</div>}
         <button className="ed-btn ed-btn-primary" type="submit">{t('save')}</button>
       </form>

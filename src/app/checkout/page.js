@@ -3,13 +3,14 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import './page.css';
 import Icon from '@/components/Icon';
+import PasswordInput from '@/components/PasswordInput';
 import { api, img } from '@/lib/api';
 import { useApp } from '@/context/Providers';
 
 function Checkout() {
   const params = useSearchParams();
   const router = useRouter();
-  const { t, user, login, withLoader } = useApp();
+  const { t, lang, user, login, withLoader } = useApp();
   const prizeId = params.get('prize');
   const number = params.get('number');
   const [prize, setPrize] = useState(null);
@@ -29,7 +30,8 @@ function Checkout() {
         return api(user ? '/checkout/more' : '/checkout', { method: 'POST', body });
       });
       if (data.token) login(data.token, data.user);
-      window.location.href = data.checkoutUrl;
+      if (data.manual) router.push(`/pay/manual?card=${data.cardId}`); // bank transfer / "I paid" screen
+      else window.location.href = data.checkoutUrl; // free test payment
     } catch (err) {
       setError(err.message);
     }
@@ -54,16 +56,18 @@ function Checkout() {
           <div className="co-as">{t('signed_as', { name: user.name })}</div>
         ) : (
           <>
-            <label className="ed-field"><span>{t('f_name')}</span><input className="ed-input" required value={f.name} onChange={set('name')} placeholder="Bekele Abebe" autoComplete="name" /></label>
+            <label className="ed-field"><span>{t('f_name')}</span><input className="ed-input" required value={f.name} onChange={set('name')} placeholder="John Doe" autoComplete="name" /></label>
             <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="0911 123 456" autoComplete="tel" /></label>
             <label className="ed-field"><span>{t('f_tg')}</span><input className="ed-input" required value={f.telegram} onChange={set('telegram')} placeholder="@username" autoCapitalize="none" /></label>
-            <label className="ed-field"><span>{t('f_pass')}</span><input className="ed-input" type="password" required minLength={6} value={f.password} onChange={set('password')} autoComplete="new-password" /></label>
-            <label className="ed-field"><span>{t('f_pass2')}</span><input className="ed-input" type="password" required minLength={6} value={f.password2} onChange={set('password2')} autoComplete="new-password" /></label>
+            <label className="ed-field"><span>{t('f_pass')}</span><PasswordInput required minLength={6} value={f.password} onChange={set('password')} autoComplete="new-password" /></label>
+            <label className="ed-field"><span>{t('f_pass2')}</span><PasswordInput required minLength={6} value={f.password2} onChange={set('password2')} autoComplete="new-password" /></label>
           </>
         )}
 
         {error && <div className="ed-error">{error}</div>}
-        <button className="ed-btn ed-btn-primary" type="submit"><Icon name="card" size={22} /> {t('pay_chapa')} · {prize.price.toLocaleString()} ETB</button>
+        <button className="ed-btn ed-btn-primary" type="submit">
+          <Icon name="card" size={22} /> {lang === 'am' ? 'ወደ ክፍያ ቀጥል' : 'Continue to payment'} · {prize.price.toLocaleString()} ETB
+        </button>
         <div className="co-secure"><Icon name="lock" size={15} /> {t('secure_pay')}</div>
       </form>
     </div>

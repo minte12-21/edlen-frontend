@@ -35,6 +35,7 @@ export default function ManagePrize() {
   if (!d) return <p className="ed-sub">Loading…</p>;
   const { prize, members } = d;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const pending = prize.pending || 0;
 
   async function exportXls() { try { await download(`/admin/prizes/${id}/export`, 'edlen.csv'); } catch (e) { toast(e.message, 'error'); } }
   async function end() {
@@ -48,6 +49,16 @@ export default function ManagePrize() {
   async function launch() {
     if (!confirm('Launch this prize now? People will be able to buy cards.')) return;
     try { await api(`/admin/prizes/${id}/launch`, { method: 'POST' }); toast('Prize launched'); load(); } catch (e) { toast(e.message, 'error'); }
+  }
+  async function closeSales() {
+    if (!confirm(`Stop selling now?\n\nThe draw will use only the ${prize.sold} cards already sold. Nobody can buy more cards. Waiting payments must be approved or discarded before you draw.`)) return;
+    try { await api(`/admin/prizes/${id}/close`, { method: 'POST' }); toast('Sales stopped. You can draw now.'); load(); } catch (e) { toast(e.message, 'error'); }
+  }
+  async function reopenSales() {
+    try { await api(`/admin/prizes/${id}/reopen`, { method: 'POST' }); toast('Sales are open again'); load(); } catch (e) { toast(e.message, 'error'); }
+  }
+  async function setMethod(m) {
+    try { await api(`/admin/prizes/${id}`, { method: 'PUT', body: { payMethod: m } }); toast('Payment type saved'); load(); } catch (e) { toast(e.message, 'error'); }
   }
   async function addPerson(e) {
     e.preventDefault();
@@ -79,12 +90,28 @@ export default function ManagePrize() {
         <div className="ad-row">
           {prize.status !== 'ENDED' && <Link href={`/admin/prizes/${id}/edit`} className="ed-btn ed-btn-ghost ed-btn-sm">Edit</Link>}
           {soon && <button className="ed-btn ed-btn-primary ed-btn-sm" onClick={launch}>Launch now</button>}
+          {prize.status === 'ONGOING' && prize.sold > 0 && <button className="ed-btn ed-btn-gold ed-btn-sm" onClick={closeSales}>Stop selling &amp; draw</button>}
+          {prize.status === 'CLOSED' && d.placesDrawn === 0 && prize.sold < prize.totalCards && <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={reopenSales}>Reopen sales</button>}
           {prize.status === 'CLOSED' && <Link href={`/draw/${id}`} className="ed-btn ed-btn-gold ed-btn-sm">Open live draw screen</Link>}
           {!soon && <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={exportXls}>Export to Excel</button>}
           {!soon && prize.status !== 'ENDED' && <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={end}>End</button>}
           <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={del}>Delete</button>
         </div>
-        {prize.status === 'ONGOING' && <p className="ed-sub" style={{ marginTop: 10 }}>The draw unlocks when all {prize.totalCards} cards are sold.</p>}
+        {prize.status === 'ONGOING' && <p className="ed-sub" style={{ marginTop: 10 }}>The draw opens when all {prize.totalCards} cards are sold, or press “Stop selling &amp; draw” to draw from the cards sold so far.</p>}
+        {pending > 0 && (
+          <p className="ed-sub" style={{ marginTop: 10, color: 'var(--gold)' }}>
+            {pending} payment(s) waiting for approval. <Link href="/admin/approvals" style={{ textDecoration: 'underline' }}>Open Approvals</Link>
+          </p>
+        )}
+        {prize.payMethod && prize.status !== 'ENDED' && (
+          <div style={{ marginTop: 14 }}>
+            <p className="ed-sub" style={{ marginBottom: 8 }}>How people pay for this prize:</p>
+            <div className="ad-row" style={{ marginTop: 0 }}>
+              <button className={`ed-btn ed-btn-sm ${prize.payMethod === 'SCREENSHOT' ? 'ed-btn-primary' : 'ed-btn-ghost'}`} onClick={() => setMethod('SCREENSHOT')}>Bank transfer + screenshot</button>
+              <button className={`ed-btn ed-btn-sm ${prize.payMethod === 'CONFIRM' ? 'ed-btn-primary' : 'ed-btn-ghost'}`} onClick={() => setMethod('CONFIRM')}>“I paid” button</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {prize.status === 'ONGOING' && (
