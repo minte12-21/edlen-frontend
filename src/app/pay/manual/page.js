@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import './page.css';
@@ -8,16 +8,35 @@ import { api } from '@/lib/api';
 import { useApp } from '@/context/Providers';
 
 // Pay by bank transfer (send a screenshot) or "I paid". You approve it in the dashboard.
+// The number is only held after the screenshot is sent. Leaving this page frees it.
 function ManualPay() {
   const cardId = useSearchParams().get('card');
   const router = useRouter();
-  const { lang, user, ready, toast, withLoader } = useApp();
+  const { lang, user, ready, toast, withLoader, logout } = useApp();
   const L = (en, am) => (lang === 'am' ? am : en);
   const [d, setD] = useState(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const sentRef = useRef(false);
+  const timerRef = useRef(null);
+
+  // Free the number (and remove the new account) if the person leaves without sending.
+  async function cancelHold() {
+    if (sentRef.current || !cardId) return;
+    try {
+      const r = await api('/payments/cancel', { method: 'POST', body: { cardId } });
+      if (r && r.loggedOut && typeof logout === 'function') logout();
+    } catch {}
+  }
+
+  // Runs when the person leaves this page. The short delay avoids a false cancel in dev mode.
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    return () => { timerRef.current = setTimeout(() => { cancelHold(); }, 500); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -25,6 +44,7 @@ function ManualPay() {
     api(`/payments/manual/${cardId}`)
       .then((info) => {
         if (info.card.status === 'PAID') return router.replace('/my-card');
+        if (info.card.status !== 'RESERVED') sentRef.current = true;
         setSent(info.card.status === 'PENDING');
         setD(info);
       })
@@ -50,8 +70,15 @@ function ManualPay() {
     if (file) form.append('screenshot', file);
     try {
       await withLoader(L('Sending…', 'በመላክ ላይ…'), () => api('/payments/submit', { method: 'POST', form }));
+      sentRef.current = true;
       setSent(true);
     } catch (e) { setError(e.message); }
+  }
+
+  async function cancel() {
+    await cancelHold();
+    sentRef.current = true; // already handled, do not run it again on leave
+    router.replace('/');
   }
 
   if (error && !d) return (
@@ -61,6 +88,14 @@ function ManualPay() {
 
   const { card, prize, bank } = d;
   const screenshot = prize.payMethod === 'SCREENSHOT';
+
+  // All accounts. Falls back to the old single-account fields if the list is missing.
+  const accounts = (
+    bank.banks && bank.banks.length
+      ? bank.banks
+      : [{ bankName: bank.bankName, accountName: bank.accountName, accountNumber: bank.accountNumber }]
+  ).filter((b) => b && b.accountNumber);
+  const many = accounts.length > 1;
 
   if (sent) return (
     <div className="pm-done">
@@ -79,23 +114,33 @@ function ManualPay() {
           <div className="pm-amount">{prize.price.toLocaleString()} ETB</div>
         </div>
 
-        {bank.accountNumber ? (
-          <div className="pm-bank">
-            {bank.bankName && <div className="pm-row"><small>{L('Bank', 'ባንክ')}</small><b>{bank.bankName}</b></div>}
-            {bank.accountName && <div className="pm-row"><small>{L('Account name', 'የሂሳብ ስም')}</small><b>{bank.accountName}</b></div>}
-            <div className="pm-row">
-              <small>{L('Account number', 'የሂሳብ ቁጥር')}</small>
-              <button type="button" className="pm-acc" onClick={() => copy(bank.accountNumber)}>
-                {bank.accountNumber} <span>{L('Tap to copy', 'ለመቅዳት ይንኩ')}</span>
-              </button>
-            </div>
-          </div>
+        {accounts.length > 0 ? (
+          <>
+            {many && (
+              <p className="ed-sub" style={{ color: 'var(--muted)', margin: '0 0 8px' }}>
+                {L('Pay to any one of these accounts:', 'ከእነዚህ ሂሳቦች ወደ አንዱ ይክፈሉ፦')}
+              </p>
+            )}
+            {accounts.map((b, i) => (
+              <div className="pm-bank" key={i} style={i > 0 ? { marginTop: 10 } : undefined}>
+                {many && <div className="pm-row"><small>{L(`Account ${i + 1}`, `ሂሳብ ${i + 1}`)}</small></div>}
+                {b.bankName && <div className="pm-row"><small>{L('Bank', 'ባንክ')}</small><b>{b.bankName}</b></div>}
+                {b.accountName && <div className="pm-row"><small>{L('Account name', 'የሂሳብ ስም')}</small><b>{b.accountName}</b></div>}
+                <div className="pm-row">
+                  <small>{L('Account number', 'የሂሳብ ቁጥር')}</small>
+                  <button type="button" className="pm-acc" onClick={() => copy(b.accountNumber)}>
+                    {b.accountNumber} <span>{L('Tap to copy', 'ለመቅዳት ይንኩ')}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>
         ) : (
           <div className="pm-warn">{L('The payment account is not set yet. Please contact the admin.', 'የክፍያ ሂሳብ ገና አልተሞላም። እባክዎ አስተዳዳሪውን ያግኙ።')}</div>
         )}
 
         <ol className="pm-steps">
-          <li>{L(`Send ${prize.price} ETB to the account above.`, `${prize.price} ብር ወደ ላይ ወዳለው ሂሳብ ይላኩ።`)}</li>
+          <li>{L(`Send ${prize.price} ETB to ${many ? 'one of the accounts' : 'the account'} above.`, `${prize.price} ብር ወደ ላይ ${many ? 'ካሉት ሂሳቦች ወደ አንዱ' : 'ወዳለው ሂሳብ'} ይላኩ።`)}</li>
           {screenshot ? (
             <>
               <li>{L('Take a screenshot of your payment.', 'የክፍያዎን ስክሪንሾት ያንሱ።')}</li>
@@ -120,8 +165,13 @@ function ManualPay() {
         <button className="ed-btn ed-btn-primary" onClick={send} disabled={screenshot && !file}>
           <Icon name="send" size={20} /> {screenshot ? L('Send', 'ላክ') : L('I paid', 'ከፍያለሁ')}
         </button>
+        <button type="button" className="ed-btn ed-btn-sm" style={{ marginTop: 8 }} onClick={cancel}>
+          {L('Cancel', 'ሰርዝ')}
+        </button>
         <p className="ed-sub" style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 12 }}>
-          {L('Your number is held while you pay.', 'በሚከፍሉበት ጊዜ ቁጥርዎ ተይዞ ይቆያል።')}
+          {screenshot
+            ? L('Your number is held only after you send the screenshot.', 'ቁጥርዎ የሚያዘው ስክሪንሾቱን ከላኩ በኋላ ብቻ ነው።')
+            : L('Your number is held only after you tap "I paid".', 'ቁጥርዎ የሚያዘው "ከፍያለሁ" ከተጫኑ በኋላ ብቻ ነው።')}
         </p>
       </div>
     </div>
