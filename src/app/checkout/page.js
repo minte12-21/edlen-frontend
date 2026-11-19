@@ -57,7 +57,7 @@ function Checkout() {
         ) : (
           <>
             <label className="ed-field"><span>{t('f_name')}</span><input className="ed-input" required value={f.name} onChange={set('name')} placeholder="John Doe" autoComplete="name" /></label>
-            <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="0911 123 456" autoComplete="tel" /></label>
+            <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="09********" autoComplete="tel" /></label>
             <label className="ed-field"><span>{t('f_tg')}</span><input className="ed-input" required value={f.telegram} onChange={set('telegram')} placeholder="@username" autoCapitalize="none" /></label>
             <label className="ed-field"><span>{t('f_pass')}</span><PasswordInput required minLength={6} value={f.password} onChange={set('password')} autoComplete="new-password" /></label>
             <label className="ed-field"><span>{t('f_pass2')}</span><PasswordInput required minLength={6} value={f.password2} onChange={set('password2')} autoComplete="new-password" /></label>
