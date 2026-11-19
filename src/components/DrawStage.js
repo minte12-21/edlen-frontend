@@ -100,7 +100,7 @@ export default function DrawStage({ prizeId }) {
 
       {phase === 'idle' && (
         <>
-          <div className="ds-ball">🎰</div>
+          <div className="ds-ball">🎁</div>
           <p className="ed-sub">{prize.status !== 'CLOSED' ? t('draw_closed_first') : allDrawn ? t('all_drawn') : t('draw_wait')}</p>
           <p className="ed-sub" style={{ marginTop: 6 }}>{t('good_luck_all')}</p>
           {isAdmin && prize.status === 'CLOSED' && !allDrawn && (

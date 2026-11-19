@@ -25,7 +25,7 @@ export default function Login() {
   return (
     <form className="ed-paper ed-page" style={{ marginTop: 20 }} onSubmit={submit}>
       <h1 className="ed-title" style={{ color: 'var(--ink)', marginBottom: 16 }}>{t('login_title')}</h1>
-      <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="0911 123 456" autoComplete="tel" /></label>
+      <label className="ed-field"><span>{t('f_phone')}</span><input className="ed-input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="09********" autoComplete="tel" /></label>
       <label className="ed-field"><span>{t('f_pass')}</span><PasswordInput required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="current-password" /></label>
       {error && <div className="ed-error">{error}</div>}
       <button className="ed-btn ed-btn-primary" type="submit">{t('login')}</button>
