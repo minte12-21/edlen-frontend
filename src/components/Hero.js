@@ -12,19 +12,19 @@ export default function Hero() {
   return (
     <section
       aria-label="Edlen"
-      className="relative mb-4 w-full aspect-[9/5] overflow-hidden rounded-[28px] border border-white/15 bg-[#062b14]"
+      className="relative mb-4 w-full aspect-[5/4] overflow-hidden rounded-[28px] border border-white/15 bg-[#062b14]"
     >
       <style>{`
         .hero-in{opacity:0;transform:translateY(14px);animation:hero-rise .7s cubic-bezier(.2,.8,.2,1) forwards}
         .hero-img{opacity:0;animation:hero-fade .8s ease .05s forwards}
-        .hero-kicker{margin:0;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#b6ffc8;text-shadow:0 1px 8px rgba(0,0,0,.45)}
+        .hero-kicker{margin:0;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#b6ffc8;text-shadow:0 1px 8px rgba(0,0,0,.45)}
         .hero-title{display:flex;flex-direction:column;margin:0;line-height:1.02;font-weight:900;letter-spacing:-.02em}
-        .hero-t1,.hero-t2{font-size:clamp(26px,8.5vw,36px)}
+        .hero-t1,.hero-t2{font-size:clamp(32px,10.5vw,46px)}
         .hero-t1{color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.45)}
         .hero-t2 em{font-style:normal;background:linear-gradient(100deg,#ffd45c 0%,#fff3b0 40%,#ffb11a 60%,#ffd45c 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:hero-shine 3.2s linear infinite;filter:drop-shadow(0 2px 8px rgba(0,0,0,.35))}
-        .hero-am .hero-t1,.hero-am .hero-t2{font-size:clamp(22px,6.5vw,28px);line-height:1.12}
-        .hero-brand{display:flex;align-items:center;gap:7px;margin:6px 0 0;font-size:12px;font-weight:800;letter-spacing:.05em;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.5)}
-        .hero-brand i{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:hero-ping 1.8s ease-out infinite}
+        .hero-am .hero-t1,.hero-am .hero-t2{font-size:clamp(26px,8vw,36px);line-height:1.12}
+        .hero-brand{display:flex;align-items:center;gap:7px;margin:8px 0 0;font-size:13px;font-weight:800;letter-spacing:.05em;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+        .hero-brand i{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:hero-ping 1.8s ease-out infinite}
         .hero-brand b{font-weight:700;color:#b6ffc8}
         @keyframes hero-rise{to{opacity:1;transform:none}}
         @keyframes hero-fade{to{opacity:1}}
@@ -49,7 +49,7 @@ export default function Hero() {
       </div>
 
       {/* the texts, on the left side of the image */}
-      <div className={`relative z-10 flex h-full max-w-[54%] flex-col justify-center gap-1.5 pl-5 ${am ? 'hero-am' : ''}`}>
+      <div className={`relative z-10 flex h-full max-w-[56%] flex-col justify-center gap-2 pl-5 ${am ? 'hero-am' : ''}`}>
         <p className="hero-kicker hero-in" style={{ animationDelay: '.1s' }}>
           {am ? 'እድልዎን ይሞክሩ' : 'Try your chance'}
         </p>
