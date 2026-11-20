@@ -12,7 +12,7 @@ export default function Hero() {
   return (
     <section
       aria-label="Edlen"
-      className="relative mb-4 w-full aspect-[5/4] overflow-hidden rounded-[28px] border border-white/15 bg-[#062b14]"
+      className="relative mb-4 w-full aspect-[4/5] overflow-hidden rounded-[28px] border border-white/15 bg-[#062b14]"
     >
       <style>{`
         .hero-in{opacity:0;transform:translateY(14px);animation:hero-rise .7s cubic-bezier(.2,.8,.2,1) forwards}
@@ -45,12 +45,12 @@ export default function Hero() {
           priority
           unoptimized
           sizes="(max-width: 480px) 100vw, 480px"
-          className="object-cover object-right"
+          className="object-cover object-[82%_50%]"
         />
       </div>
 
       {/* the texts, on the left side of the image */}
-      <div className={`relative z-10 flex h-full max-w-[56%] flex-col justify-center gap-2 pl-5 ${am ? 'hero-am' : ''}`}>
+      <div className={`relative z-10 flex h-full max-w-[54%] flex-col justify-center gap-2 pl-5 ${am ? 'hero-am' : ''}`}>
         <p className="hero-kicker hero-in" style={{ animationDelay: '.1s' }}>
           {am ? 'እድልዎን ይሞክሩ' : 'Try your chance'}
         </p>
