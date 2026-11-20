@@ -13,63 +13,95 @@ const ITEMS = [
   { href: '/profile', icon: 'user', key: 'nav_profile' },
 ];
 
+const NO_KEYBOARD = ['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color', 'image'];
+
 export default function BottomNav() {
   const path = usePathname();
   const { t } = useApp();
-  const [shift, setShift] = useState(0);
+  // null = nav sits at the bottom. A number = nav is parked just below the screen (keyboard open)
+  const [hideTop, setHideTop] = useState(null);
   const isActive = (href) => (href === '/' ? path === '/' : path.startsWith(href));
 
   useEffect(() => {
-    // 1) Tell Chrome not to resize the page when the keyboard opens.
-    //    The keyboard then just covers the bottom, and the nav stays in place.
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (meta && !/interactive-widget/.test(meta.content)) {
-      meta.setAttribute('content', `${meta.content}, interactive-widget=resizes-visual`);
-    }
+    let baseH = window.innerHeight; // biggest screen height seen (keyboard closed)
+    let baseW = window.innerWidth;
+    let focused = false; // a text field is focused
+    let sawOpen = false; // the keyboard really opened
+    let shown = null;
+    let focusTimer = null;
+    let burstTimer = null;
 
-    // 2) Backup for browsers that still resize: push the nav back down by the lost height.
-    let fullH = window.innerHeight;
-    let width = window.innerWidth;
+    const isField = (el) =>
+      !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable ||
+        (el.tagName === 'INPUT' && !NO_KEYBOARD.includes(el.type)));
 
-    const update = () => {
-      if (window.innerWidth !== width) { // phone was rotated: start again
-        width = window.innerWidth;
-        fullH = window.innerHeight;
+    // Height of what you can see (ignored when the page is pinch-zoomed)
+    const viewH = () => {
+      const vv = window.visualViewport;
+      return vv && vv.scale <= 1.01 ? Math.min(window.innerHeight, vv.height) : window.innerHeight;
+    };
+
+    const apply = () => {
+      if (window.innerWidth !== baseW) { // phone rotated: start again
+        baseW = window.innerWidth;
+        baseH = window.innerHeight;
+        sawOpen = false;
+      } else if (window.innerHeight > baseH) {
+        baseH = window.innerHeight;
       }
-      if (window.innerHeight > fullH) fullH = window.innerHeight;
-      const diff = fullH - window.innerHeight;
-      setShift(diff > 120 ? diff : 0);
+
+      const keyboardOpen = viewH() < baseH - 120;
+      if (keyboardOpen) sawOpen = true;
+      else if (sawOpen) { focused = false; sawOpen = false; } // keyboard was closed (e.g. back button)
+
+      const next = focused || keyboardOpen ? baseH : null;
+      if (next !== shown) { shown = next; setHideTop(next); }
     };
 
-    // The keyboard changes size while it animates (numbers -> letters, password bar),
-    // so keep checking for a moment after every field change.
-    let timer = null;
+    // The keyboard changes size while it animates (numbers, letters, password bar),
+    // so keep checking for a moment after every focus change.
     const burst = () => {
-      clearInterval(timer);
+      clearInterval(burstTimer);
       let n = 0;
-      timer = setInterval(() => {
-        update();
-        if (++n > 12) clearInterval(timer);
-      }, 100);
+      burstTimer = setInterval(() => { apply(); if (++n > 15) clearInterval(burstTimer); }, 100);
     };
 
-    window.addEventListener('resize', update);
-    document.addEventListener('focusin', burst);
-    document.addEventListener('focusout', burst);
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', update);
+    const onFocusIn = (e) => {
+      if (!isField(e.target)) return;
+      clearTimeout(focusTimer);
+      focused = true;
+      apply();
+      burst();
+    };
+
+    const onFocusOut = () => {
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => {
+        if (!isField(document.activeElement)) { focused = false; apply(); burst(); }
+      }, 150);
+    };
+
+    window.addEventListener('resize', apply);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
 
     return () => {
-      clearInterval(timer);
-      window.removeEventListener('resize', update);
-      document.removeEventListener('focusin', burst);
-      document.removeEventListener('focusout', burst);
-      if (window.visualViewport) window.visualViewport.removeEventListener('resize', update);
+      clearTimeout(focusTimer);
+      clearInterval(burstTimer);
+      window.removeEventListener('resize', apply);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+      if (window.visualViewport) window.visualViewport.removeEventListener('resize', apply);
     };
   }, []);
 
+  const hidden = hideTop !== null;
+
   return (
     <nav
-      style={{ bottom: `calc(env(safe-area-inset-bottom) - ${shift}px)` }}
+      aria-hidden={hidden}
+      style={hidden ? { top: hideTop, bottom: 'auto' } : { bottom: 'env(safe-area-inset-bottom)' }}
       className="fixed left-1/2 -translate-x-1/2 z-50 flex w-[calc(100%-28px)] max-w-[452px] justify-around rounded-full bg-white px-2 py-2 shadow-[0_10px_40px_rgba(0,0,0,.45)]"
     >
       {ITEMS.map((i) => (
