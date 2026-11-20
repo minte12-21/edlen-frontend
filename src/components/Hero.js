@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { useApp } from '@/context/Providers';
 
 // Your hero image: put the file in frontend/public/images/ and set its name here.
-const HERO_SRC = '/images/hero.png';
+const HERO_SRC = '/images/hero.webp';
 
 export default function Hero() {
   const { lang } = useApp();
