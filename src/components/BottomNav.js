@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from './Icon';
@@ -12,11 +13,42 @@ const ITEMS = [
   { href: '/profile', icon: 'user', key: 'nav_profile' },
 ];
 
+const NO_KEYBOARD = ['checkbox', 'radio', 'button', 'submit', 'file', 'range', 'color'];
+
 export default function BottomNav() {
   const path = usePathname();
   const { t } = useApp();
+  const [typing, setTyping] = useState(false);
   const isActive = (href) => (href === '/' ? path === '/' : path.startsWith(href));
-  
+
+  // Hide the nav while the keyboard is open (like a real mobile app)
+  useEffect(() => {
+    const isField = (el) =>
+      el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !NO_KEYBOARD.includes(el.type);
+
+    const onIn = (e) => { if (isField(e.target)) setTyping(true); };
+    const onOut = () => setTimeout(() => { if (!isField(document.activeElement)) setTyping(false); }, 120);
+
+    // Backup: the screen height shrinks a lot when the keyboard opens
+    let maxH = window.innerHeight;
+    const onResize = () => {
+      maxH = Math.max(maxH, window.innerHeight);
+      if (window.innerHeight < maxH - 150) setTyping(true);
+      else if (!isField(document.activeElement)) setTyping(false);
+    };
+
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.removeEventListener('focusin', onIn);
+      document.removeEventListener('focusout', onOut);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  if (typing) return null;
+
   return (
     <nav className="fixed bottom-[env(safe-area-inset-bottom)] left-1/2 -translate-x-1/2 z-50 flex w-[calc(100%-28px)] max-w-[452px] justify-around rounded-full bg-white px-2 py-2 shadow-[0_10px_40px_rgba(0,0,0,.45)]">
       {ITEMS.map((i) => (
