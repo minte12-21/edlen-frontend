@@ -1,23 +1,29 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import './page.css';
 import Confetti from '@/components/Confetti';
-import { api } from '@/lib/api';
+import { api, API_URL, getToken } from '@/lib/api';
 import { rankLabel } from '@/lib/i18n';
 import { useApp } from '@/context/Providers';
+import { io } from 'socket.io-client';
 
 export default function Winners() {
   const { t, lang, user, ready } = useApp();
-  const [groups, setGroups] = useState(null);
+  
+  const { data, error } = useSWR(ready && user ? '/me/winners' : null, (url) => api(url));
 
   useEffect(() => {
-    if (!ready) return;
-    if (!user) return setGroups([]);
-    api('/me/winners').then((d) => setGroups(d.groups)).catch(() => setGroups([]));
-  }, [ready, user]);
+    const socket = io(API_URL, { auth: { token: getToken() } });
+    
+    // Refresh when a draw happens or admin updates
+    socket.on('admin:update', () => import('swr').then(({ mutate }) => mutate('/me/winners')));
 
-  if (!ready || !groups) return <p className="ed-sub">{t('loading')}</p>;
+    return () => socket.disconnect();
+  }, []);
+
+  if (!ready || (!data && !error)) return <p className="ed-sub">{t('loading')}</p>;
   if (!user) return (
     <div className="ed-center" style={{ padding: '50px 10px' }}>
       <p className="ed-sub" style={{ marginBottom: 16 }}>{t('need_login')}</p>
@@ -25,6 +31,7 @@ export default function Winners() {
     </div>
   );
 
+  const groups = data?.groups || [];
   const iWon = groups.some((g) => g.winners.some((w) => w.userId === user.id));
 
   return (

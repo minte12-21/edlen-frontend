@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { SWRConfig, mutate } from 'swr';
 import { api, setToken, getToken } from '@/lib/api';
 import { dict } from '@/lib/i18n';
 import Loader from '@/components/Loader';
@@ -19,7 +20,7 @@ export default function Providers({ children }) {
   const [toasts, setToasts] = useState([]);
   const idRef = useRef(0);
 
-  // language + first-visit splash + restore session
+  // language + first-visit splash + restore session + PREFETCH ALL DATA
   useEffect(() => {
     const saved = localStorage.getItem('edlen_lang');
     if (saved === 'am' || saved === 'en') setLangState(saved);
@@ -29,9 +30,31 @@ export default function Providers({ children }) {
     const started = Date.now();
 
     (async () => {
+      // 1. Start fetching all data simultaneously
+      const fetches = [
+        mutate('/prizes', api('/prizes')),
+        mutate('/about', api('/about')),
+      ];
+      
       if (getToken()) {
-        try { setUser((await api('/me')).user); } catch { setToken(null); }
+        fetches.push(mutate('/me/cards', api('/me/cards')));
+        fetches.push(mutate('/me/winners', api('/me/winners')));
+        fetches.push(mutate('/admin/stats', api('/admin/stats')));
+        fetches.push(mutate('/admin/prizes', api('/admin/prizes')));
+        fetches.push(mutate('/admin/payment-mode', api('/admin/payment-mode')));
+        
+        try { 
+          const userReq = api('/me');
+          fetches.push(mutate('/me', userReq)); // Add /me to the wait list
+          setUser((await userReq).user); 
+        } catch { 
+          setToken(null); 
+        }
       }
+
+      // 2. Wait for ALL fetches to finish before removing the splash screen
+      await Promise.all(fetches);
+      
       setReady(true);
       await sleep(Math.max(0, minSplash - (Date.now() - started)));
       sessionStorage.setItem('edlen_seen', '1');
@@ -64,14 +87,12 @@ export default function Providers({ children }) {
     return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
   }, [lang]);
 
-  // The same message is never stacked twice
   const toast = useCallback((msg, type = 'ok') => {
     const id = ++idRef.current;
     setToasts((l) => (l.some((x) => x.msg === msg) ? l : [...l, { id, msg, type }]));
     setTimeout(() => setToasts((l) => l.filter((x) => x.id !== id)), 3200);
   }, []);
 
-  // Show the loader while an async job runs (at least ~1s so it never flickers)
   const withLoader = useCallback(async (text, fn, minMs = 1100) => {
     setOverlay(text);
     const started = Date.now();
@@ -93,10 +114,12 @@ export default function Providers({ children }) {
 
   return (
     <Ctx.Provider value={value}>
-      {children}
-      {splash && <Loader text={t('loading')} />}
-      {!splash && overlay && <Loader text={overlay} />}
-      <ToastHost toasts={toasts} />
+      <SWRConfig value={{ provider: () => new Map() }}>
+        {children}
+        {splash && <Loader text={t('loading')} />}
+        {!splash && overlay && <Loader text={overlay} />}
+        <ToastHost toasts={toasts} />
+      </SWRConfig>
     </Ctx.Provider>
   );
 }

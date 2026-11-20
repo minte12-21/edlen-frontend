@@ -1,26 +1,35 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import './page.css';
 import Icon from '@/components/Icon';
-import { api, img } from '@/lib/api';
+import { api, img, API_URL, getToken } from '@/lib/api';
 import { rankLabel } from '@/lib/i18n';
 import { useApp } from '@/context/Providers';
+import { io } from 'socket.io-client';
 
 export default function MyCard() {
   const { t, lang, user, ready } = useApp();
-  const [cards, setCards] = useState(null);
+  
+  const { data, error } = useSWR(ready && user ? '/me/cards' : null, (url) => api(url));
 
   useEffect(() => {
-    if (!ready) return;
-    if (!user) return setCards([]);
-    api('/me/cards').then((d) => setCards(d.cards)).catch(() => setCards([]));
-  }, [ready, user]);
+    const socket = io(API_URL, { auth: { token: getToken() } });
+    
+    // Refresh when a card is paid or admin updates
+    socket.on('card:paid', () => import('swr').then(({ mutate }) => mutate('/me/cards')));
+    socket.on('admin:update', () => import('swr').then(({ mutate }) => mutate('/me/cards')));
 
-  if (!ready || !cards) return <p className="ed-sub">{t('loading')}</p>;
+    return () => socket.disconnect();
+  }, []);
+
+  if (!ready || (!data && !error)) return <p className="ed-sub">{t('loading')}</p>;
   if (!user) return (
     <div className="mc-empty"><b>🔒</b><p>{t('need_login')}</p><Link href="/login" className="ed-btn ed-btn-primary" style={{ marginTop: 16 }}>{t('login')}</Link></div>
   );
+  
+  const cards = data?.cards || [];
   if (cards.length === 0) return (
     <div className="mc-empty"><b>🎟️</b><p>{t('no_cards')}</p><Link href="/" className="ed-btn ed-btn-primary" style={{ marginTop: 16 }}>{t('pick_number')}</Link></div>
   );

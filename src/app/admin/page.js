@@ -1,27 +1,52 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import useSWR, { mutate } from 'swr';
+import { api, API_URL, getToken } from '@/lib/api';
 import { useApp } from '@/context/Providers';
+import { io } from 'socket.io-client';
 
 export default function AdminHome() {
   const { toast } = useApp();
-  const [stats, setStats] = useState(null);
-  const [prizes, setPrizes] = useState([]);
-  const [mode, setMode] = useState(null);
+  
+  // SWR automatically caches this data
+  const { data: stats, error: err1 } = useSWR('/admin/stats', (url) => api(url));
+  const { data: prizesData, error: err2 } = useSWR('/admin/prizes', (url) => api(url));
+  const { data: mode, error: err3 } = useSWR('/admin/payment-mode', (url) => api(url));
 
   useEffect(() => {
-    api('/admin/stats').then(setStats).catch((e) => toast(e.message, 'error'));
-    api('/admin/prizes').then((d) => setPrizes(d.prizes)).catch((e) => toast(e.message, 'error'));
-    api('/admin/payment-mode').then(setMode).catch((e) => toast(e.message, 'error'));
-  }, [toast]);
+    if (err1) toast(err1.message, 'error');
+    if (err2) toast(err2.message, 'error');
+    if (err3) toast(err3.message, 'error');
+  }, [err1, err2, err3, toast]);
+
+  useEffect(() => {
+    const socket = io(API_URL, { auth: { token: getToken() } });
+    socket.emit('join:admin');
+
+    const refresh = () => {
+      mutate('/admin/stats');
+      mutate('/admin/prizes');
+      mutate('/admin/payment-mode');
+    };
+
+    socket.on('admin:update', refresh);
+    socket.on('number:taken', refresh);
+
+    return () => socket.disconnect();
+  }, []);
 
   async function switchMode(m) {
     try {
-      setMode(await api('/admin/payment-mode', { method: 'PUT', body: { mode: m } }));
+      await api('/admin/payment-mode', { method: 'PUT', body: { mode: m } });
       toast(m === 'mock' ? 'Mock payment is ON (fake, free cards)' : 'Normal payment is ON');
+      mutate('/admin/payment-mode');
     } catch (e) { toast(e.message, 'error'); }
   }
+
+  const prizes = prizesData?.prizes || [];
+
+  if (!stats && !err1) return <p className="ed-sub">Loading stats...</p>;
 
   return (
     <>

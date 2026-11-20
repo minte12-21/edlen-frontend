@@ -1,13 +1,18 @@
 'use client';
 import Image from 'next/image';
+import Link from 'next/link';
+import useSWR from 'swr';
 import { useApp } from '@/context/Providers';
+import { api } from '@/lib/api';
 
-// Your hero image: put the file in frontend/public/images/ and set its name here.
 const HERO_SRC = '/images/hero.webp';
 
 export default function Hero() {
   const { lang } = useApp();
   const am = lang === 'am';
+
+  // Caches the about data so it only fetches once
+  useSWR('/about', (url) => api(url));
 
   return (
     <section
@@ -36,7 +41,6 @@ export default function Hero() {
         }
       `}</style>
 
-      {/* your original image, shown exactly as it is (no recompression) */}
       <div className="hero-img absolute inset-0">
         <Image
           src={HERO_SRC}
@@ -49,7 +53,6 @@ export default function Hero() {
         />
       </div>
 
-      {/* the texts, on the left side of the image */}
       <div className={`relative z-10 flex h-full max-w-[54%] flex-col justify-center gap-2 pl-5 ${am ? 'hero-am' : ''}`}>
         <p className="hero-kicker hero-in" style={{ animationDelay: '.1s' }}>
           {am ? 'እድልዎን ይሞክሩ' : 'Try your chance'}
@@ -62,6 +65,14 @@ export default function Hero() {
           <i /> Edlen <b>· እድሌን</b>
         </p>
       </div>
+
+      {/* About Us Button - Left Bottom & Bigger */}
+      <Link 
+        href="/about" 
+        className="absolute bottom-6 left-6 z-20 rounded-full bg-black/50 px-6 py-3 text-sm font-bold text-white backdrop-blur-md border border-white/30 transition hover:bg-black/70"
+      >
+        {am ? 'ስለ እኛ' : 'About Us'}
+      </Link>
     </section>
   );
 }

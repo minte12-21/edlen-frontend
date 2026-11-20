@@ -1,28 +1,47 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import useSWR from 'swr';
 import PrizePanel from '@/components/PrizePanel';
 import Icon from '@/components/Icon';
-import { api } from '@/lib/api';
+import { api, API_URL, getToken } from '@/lib/api';
 import { useApp } from '@/context/Providers';
+import { io } from 'socket.io-client';
 
 export default function PrizePage() {
   const { id } = useParams();
-  const { t } = useApp();
-  const [prize, setPrize] = useState(null);
-  const [missing, setMissing] = useState(false);
+  const { t, toast } = useApp();
+
+  const { data, error } = useSWR(`/prizes/${id}`, (url) => api(url));
+  
+  useEffect(() => {
+    if (error) toast(error.message, 'error');
+  }, [error, toast]);
 
   useEffect(() => {
-    api(`/prizes/${id}`).then((d) => setPrize(d.prize)).catch(() => setMissing(true));
+    const socket = io(API_URL, { auth: { token: getToken() } });
+    
+    // Join this specific prize's room
+    socket.emit('join:prize', id);
+
+    // Silent background refresh for this specific prize
+    socket.on('number:taken', () => import('swr').then(({ mutate }) => mutate(`/prizes/${id}`)));
+    socket.on('card:paid', () => import('swr').then(({ mutate }) => mutate(`/prizes/${id}`)));
+    socket.on('card:freed', () => import('swr').then(({ mutate }) => mutate(`/prizes/${id}`)));
+    socket.on('admin:update', () => import('swr').then(({ mutate }) => mutate(`/prizes/${id}`)));
+
+    return () => socket.disconnect();
   }, [id]);
 
   return (
     <div className="ed-page">
       <Link href="/prizes" className="ed-back"><Icon name="back" size={18} /> {t('nav_prizes')}</Link>
-      {missing && <p className="ed-sub ed-center">{t('empty_prizes')}</p>}
-      {!prize && !missing && <p className="ed-sub">{t('loading')}</p>}
-      {prize && <PrizePanel prize={prize} />}
+      
+      {error && <p className="ed-sub ed-center">{t('empty_prizes')}</p>}
+      {!data && !error && <p className="ed-sub">{t('loading')}</p>}
+      
+      {data?.prize && <PrizePanel prize={data.prize} />}
     </div>
   );
 }
