@@ -36,14 +36,15 @@ export default function Hero() {
         }
       `}</style>
 
-      {/* your image fills the whole card, nothing added on top of it */}
+      {/* your original image, shown exactly as it is (no recompression) */}
       <div className="hero-img absolute inset-0">
         <Image
           src={HERO_SRC}
           alt="Edlen"
           fill
           priority
-          sizes="(max-width: 480px) 100vw, 452px"
+          unoptimized
+          sizes="(max-width: 480px) 100vw, 480px"
           className="object-cover object-right"
         />
       </div>
