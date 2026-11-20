@@ -73,7 +73,14 @@ export default function DrawStage({ prizeId }) {
       setLeft(Math.max(0, Math.ceil(remain / 1000)));
       setFrac(Math.min(1, Math.max(0, 1 - remain / (current.seconds * 1000))));
     }, 80);
-    const spin = setInterval(() => setFlash(1 + Math.floor(Math.random() * current.totalCards)), 70);
+    // CHANGED: flash random numbers from sold numbers only
+    const spin = setInterval(() => {
+      if (current.soldNumbers && current.soldNumbers.length > 0) {
+        setFlash(current.soldNumbers[Math.floor(Math.random() * current.soldNumbers.length)]);
+      } else {
+        setFlash(1 + Math.floor(Math.random() * current.totalCards));
+      }
+    }, 70);
     return () => { clearInterval(tick); clearInterval(spin); };
   }, [phase, current]);
 
