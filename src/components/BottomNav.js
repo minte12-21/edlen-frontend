@@ -19,9 +19,15 @@ export default function BottomNav() {
   const [shift, setShift] = useState(0);
   const isActive = (href) => (href === '/' ? path === '/' : path.startsWith(href));
 
-  // When the keyboard opens, the screen gets shorter and the nav is pushed up.
-  // We push it back down by the same amount, so it stays at the real bottom of the phone.
   useEffect(() => {
+    // 1) Tell Chrome not to resize the page when the keyboard opens.
+    //    The keyboard then just covers the bottom, and the nav stays in place.
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta && !/interactive-widget/.test(meta.content)) {
+      meta.setAttribute('content', `${meta.content}, interactive-widget=resizes-visual`);
+    }
+
+    // 2) Backup for browsers that still resize: push the nav back down by the lost height.
     let fullH = window.innerHeight;
     let width = window.innerWidth;
 
@@ -35,8 +41,30 @@ export default function BottomNav() {
       setShift(diff > 120 ? diff : 0);
     };
 
+    // The keyboard changes size while it animates (numbers -> letters, password bar),
+    // so keep checking for a moment after every field change.
+    let timer = null;
+    const burst = () => {
+      clearInterval(timer);
+      let n = 0;
+      timer = setInterval(() => {
+        update();
+        if (++n > 12) clearInterval(timer);
+      }, 100);
+    };
+
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    document.addEventListener('focusin', burst);
+    document.addEventListener('focusout', burst);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', update);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('resize', update);
+      document.removeEventListener('focusin', burst);
+      document.removeEventListener('focusout', burst);
+      if (window.visualViewport) window.visualViewport.removeEventListener('resize', update);
+    };
   }, []);
 
   return (
