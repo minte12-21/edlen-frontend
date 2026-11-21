@@ -25,13 +25,22 @@ function Checkout() {
     setError('');
     if (!user && f.password !== f.password2) return setError(t('e_pass_mismatch'));
     try {
-      const data = await withLoader(user ? t('ld_pay') : t('ld_signup'), async () => {
-        const body = user ? { prizeId, number } : { prizeId, number, name: f.name, phone: f.phone, telegram: f.telegram, password: f.password };
-        return api(user ? '/checkout/more' : '/checkout', { method: 'POST', body });
-      });
+      const body = user
+        ? { prizeId, number }
+        : { prizeId, number, name: f.name, phone: f.phone, telegram: f.telegram, password: f.password };
+      const data = await withLoader(user ? t('ld_pay') : t('ld_signup'), () => api('/checkout/start', { method: 'POST', body }));
+
+      // Normal payment: nothing is saved yet. The form waits in this tab until the screenshot is sent.
+      if (data.draft) {
+        sessionStorage.setItem('edlen_draft', JSON.stringify(body));
+        router.push('/pay/manual?draft=1');
+        return;
+      }
+
+      // Free test payment
       if (data.token) login(data.token, data.user);
-      if (data.manual) router.push(`/pay/manual?card=${data.cardId}`); // bank transfer / "I paid" screen
-      else window.location.href = data.checkoutUrl; // free test payment
+      if (data.manual) router.push(`/pay/manual?card=${data.cardId}`);
+      else window.location.href = data.checkoutUrl;
     } catch (err) {
       setError(err.message);
     }

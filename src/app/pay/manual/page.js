@@ -8,13 +8,16 @@ import { api } from '@/lib/api';
 import { useApp } from '@/context/Providers';
 
 // Pay by bank transfer (send a screenshot) or "I paid". You approve it in the dashboard.
-// The number is only held after the screenshot is sent. Leaving this page frees it.
+// Nothing is saved (no account, no held number) until the screenshot is sent.
 function ManualPay() {
-  const cardId = useSearchParams().get('card');
+  const params = useSearchParams();
+  const cardId = params.get('card');
+  const isDraft = params.get('draft') === '1';
   const router = useRouter();
-  const { lang, user, ready, toast, withLoader, logout } = useApp();
+  const { lang, user, ready, toast, withLoader, login, logout } = useApp();
   const L = (en, am) => (lang === 'am' ? am : en);
   const [d, setD] = useState(null);
+  const [draft, setDraft] = useState(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [sent, setSent] = useState(false);
@@ -22,24 +25,47 @@ function ManualPay() {
   const sentRef = useRef(false);
   const timerRef = useRef(null);
 
-  // Free the number (and remove the new account) if the person leaves without sending.
+  const dropDraft = () => { try { sessionStorage.removeItem('edlen_draft'); } catch {} };
+
+  // Old reservations only: free the number if the person leaves without sending
   async function cancelHold() {
-    if (sentRef.current || !cardId) return;
+    if (isDraft || sentRef.current || !cardId) return;
     try {
       const r = await api('/payments/cancel', { method: 'POST', body: { cardId } });
-      if (r && r.loggedOut && typeof logout === 'function') logout();
+      if (r && r.loggedOut) logout();
     } catch {}
   }
 
-  // Runs when the person leaves this page. The short delay avoids a false cancel in dev mode.
+  // When the person leaves this page without sending: forget the form. (Short delay avoids a false trigger in dev mode.)
   useEffect(() => {
     clearTimeout(timerRef.current);
-    return () => { timerRef.current = setTimeout(() => { cancelHold(); }, 500); };
+    return () => {
+      timerRef.current = setTimeout(() => {
+        if (sentRef.current) return;
+        cancelHold();
+        dropDraft();
+      }, 500);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || sentRef.current) return;
+
+    if (isDraft) {
+      let dr = null;
+      try { dr = JSON.parse(sessionStorage.getItem('edlen_draft') || 'null'); } catch {}
+      if (!dr || !dr.prizeId || !dr.number) {
+        setError(L('Your session expired. Please pick your number again.', 'ጊዜው አልፏል። እባክዎ ቁጥርዎን እንደገና ይምረጡ።'));
+        return;
+      }
+      setDraft(dr);
+      api(`/payments/draft-info?prizeId=${dr.prizeId}&number=${dr.number}`)
+        .then((info) => setD({ card: { number: info.number, status: 'DRAFT' }, prize: info.prize, bank: info.bank }))
+        .catch((e) => setError(e.message));
+      return;
+    }
+
     if (!user) { router.replace('/login'); return; }
     api(`/payments/manual/${cardId}`)
       .then((info) => {
@@ -49,7 +75,8 @@ function ManualPay() {
         setD(info);
       })
       .catch((e) => setError(e.message));
-  }, [ready, user, cardId, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, cardId, isDraft, router]);
 
   function pick(e) {
     const f = e.target.files[0];
@@ -66,19 +93,19 @@ function ManualPay() {
   async function send() {
     setError('');
     const form = new FormData();
-    form.append('cardId', cardId);
+    if (isDraft) Object.entries(draft || {}).forEach(([k, v]) => form.append(k, v));
+    else form.append('cardId', cardId);
     if (file) form.append('screenshot', file);
     try {
-      await withLoader(L('Sending…', 'በመላክ ላይ…'), () => api('/payments/submit', { method: 'POST', form }));
+      const res = await withLoader(L('Sending…', 'በመላክ ላይ…'), () =>
+        api(isDraft ? '/payments/submit-new' : '/payments/submit', { method: 'POST', form }));
       sentRef.current = true;
+      if (isDraft) {
+        dropDraft();
+        if (res.token) login(res.token, res.user); // the person is signed in only now
+      }
       setSent(true);
     } catch (e) { setError(e.message); }
-  }
-
-  async function cancel() {
-    await cancelHold();
-    sentRef.current = true; // already handled, do not run it again on leave
-    router.replace('/');
   }
 
   if (error && !d) return (
@@ -164,9 +191,6 @@ function ManualPay() {
         {error && <div className="ed-error">{error}</div>}
         <button className="ed-btn ed-btn-primary" onClick={send} disabled={screenshot && !file}>
           <Icon name="send" size={20} /> {screenshot ? L('Send', 'ላክ') : L('I paid', 'ከፍያለሁ')}
-        </button>
-        <button type="button" className="ed-btn ed-btn-sm" style={{ marginTop: 8 }} onClick={cancel}>
-          {L('Cancel', 'ሰርዝ')}
         </button>
         <p className="ed-sub" style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 12 }}>
           {screenshot
