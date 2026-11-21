@@ -1,18 +1,17 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { io } from 'socket.io-client';
 import './DrawStage.css';
 import Icon from './Icon';
 import Confetti from './Confetti';
-import { API_URL, api, getToken } from '@/lib/api';
+import { api } from '@/lib/api';
 import { rankLabel } from '@/lib/i18n';
 import { useApp } from '@/context/Providers';
 
 // The live draw screen. Everyone who joined the prize sees the same countdown.
 // The server picks the winner exactly when the countdown ends and pushes the result to everyone.
 export default function DrawStage({ prizeId }) {
-  const { t, lang, user, ready, toast } = useApp();
+  const { t, lang, user, ready, toast, socket } = useApp();
   const router = useRouter();
   const [prize, setPrize] = useState(null);
   const [info, setInfo] = useState(null);
@@ -44,28 +43,47 @@ export default function DrawStage({ prizeId }) {
     setPhase('counting');
   }, []);
 
-  // first load + live connection
+  // first load
   useEffect(() => {
     if (!ready || !user) return;
-    let socket;
     refresh().then((s) => { if (s.active) begin(s.active); }).catch((e) => setError(e.message));
+  }, [ready, user, refresh, begin]);
 
-    socket = io(API_URL, { auth: { token: getToken() } });
-    socket.on('connect', () => socket.emit('join', Number(prizeId)));
-    socket.on('draw:start', begin);
-    socket.on('draw:result', (r) => {
+  // live events, on the one shared connection
+  useEffect(() => {
+    if (!socket) return;
+    const join = () => {
+      socket.emit('join:prize', Number(prizeId));
+      refresh().then((s) => { if (s.active) begin(s.active); }).catch(() => {});
+    };
+    const onResult = (r) => {
       offset.current = r.serverNow - Date.now();
       setResult(r);
       setPhase('number');
+      clearTimeout(timer.current);
       timer.current = setTimeout(() => setPhase('winner'), 1000); // short pause for suspense
       refresh().catch(() => {});
-    });
-    socket.on('draw:error', (e) => { toast(e.message, 'error'); setPhase('idle'); });
-    socket.on('prize:ended', () => router.replace('/'));
-    return () => { socket.disconnect(); clearTimeout(timer.current); };
-  }, [ready, user, prizeId, refresh, begin, toast, router]);
+    };
+    const onError = (e) => { toast(e.message, 'error'); setPhase('idle'); };
+    const onEnded = () => router.replace('/');
 
-  // countdown + flashing numbers
+    if (socket.connected) join();
+    socket.on('connect', join);
+    socket.on('draw:start', begin);
+    socket.on('draw:result', onResult);
+    socket.on('draw:error', onError);
+    socket.on('prize:ended', onEnded);
+    return () => {
+      socket.off('connect', join);
+      socket.off('draw:start', begin);
+      socket.off('draw:result', onResult);
+      socket.off('draw:error', onError);
+      socket.off('prize:ended', onEnded);
+      clearTimeout(timer.current);
+    };
+  }, [socket, prizeId, refresh, begin, toast, router]);
+
+  // countdown + flashing numbers (from the sold numbers only)
   useEffect(() => {
     if (phase !== 'counting' || !current) return;
     const tick = setInterval(() => {
@@ -73,7 +91,6 @@ export default function DrawStage({ prizeId }) {
       setLeft(Math.max(0, Math.ceil(remain / 1000)));
       setFrac(Math.min(1, Math.max(0, 1 - remain / (current.seconds * 1000))));
     }, 80);
-    // CHANGED: flash random numbers from sold numbers only
     const spin = setInterval(() => {
       if (current.soldNumbers && current.soldNumbers.length > 0) {
         setFlash(current.soldNumbers[Math.floor(Math.random() * current.soldNumbers.length)]);
@@ -86,8 +103,11 @@ export default function DrawStage({ prizeId }) {
 
   async function start() {
     setStarting(true);
-    try { await api(`/admin/prizes/${prizeId}/draw`, { method: 'POST' }); }
-    catch (e) { toast(e.message, 'error'); }
+    try {
+      await api(`/admin/prizes/${prizeId}/draw`, { method: 'POST' });
+      // make sure the admin's own screen starts the countdown too
+      refresh().then((s) => { if (s.active) begin(s.active); }).catch(() => {});
+    } catch (e) { toast(e.message, 'error'); }
     finally { setStarting(false); }
   }
 

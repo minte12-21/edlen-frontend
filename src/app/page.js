@@ -6,34 +6,18 @@ import './page.css';
 import Hero from '@/components/Hero';
 import PrizePanel from '@/components/PrizePanel';
 import PrizeRow from '@/components/PrizeRow';
-import { api, API_URL, getToken } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useApp } from '@/context/Providers';
-import { io } from 'socket.io-client';
 
 export default function Home() {
   const { t, toast } = useApp();
 
-  // SWR fetches, caches, and auto-revalidates
-  const { data, error } = useSWR('/prizes', (url) => api(url), {
-    revalidateOnFocus: true, // updates if user tabs back
-    revalidateOnReconnect: true,
-  });
+  // Loads once, then updates by itself when anything changes
+  const { data, error } = useSWR('/prizes', api, { keepPreviousData: true });
 
   useEffect(() => {
     if (error) toast(error.message, 'error');
   }, [error, toast]);
-
-  // Live Socket Connection
-  useEffect(() => {
-    const socket = io(API_URL, { auth: { token: getToken() } });
-    
-    // When the server shouts, SWR silently fetches the new data in the background
-    socket.on('prize:new', () => import('swr').then(({ mutate }) => mutate('/prizes')));
-    socket.on('admin:update', () => import('swr').then(({ mutate }) => mutate('/prizes')));
-    socket.on('number:taken', () => import('swr').then(({ mutate }) => mutate('/prizes')));
-
-    return () => socket.disconnect();
-  }, []);
 
   let body;
 

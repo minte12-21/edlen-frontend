@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { usePathname, useRouter } from 'next/navigation';
 import './admin.css';
 import { api } from '@/lib/api';
@@ -10,21 +11,15 @@ export default function AdminLayout({ children }) {
   const { user, ready } = useApp();
   const router = useRouter();
   const path = usePathname();
-  const [count, setCount] = useState(null); // payments waiting for approval
+  const isAdmin = !!user && user.role === 'ADMIN';
 
-  useEffect(() => { if (ready && (!user || user.role !== 'ADMIN')) router.replace('/login'); }, [ready, user, router]);
+  useEffect(() => { if (ready && !isAdmin) router.replace('/login'); }, [ready, isAdmin, router]);
 
-  // Number on the Approvals tab, refreshed every 10 seconds
-  useEffect(() => {
-    if (!user || user.role !== 'ADMIN') return;
-    let stop = false;
-    const tick = () => api('/admin/approvals/count').then((d) => { if (!stop) setCount(d.count); }).catch(() => {});
-    tick();
-    const timer = setInterval(tick, 10000);
-    return () => { stop = true; clearInterval(timer); };
-  }, [user]);
+  // Number on the Approvals tab, updates the moment someone sends a payment
+  const { data: pend } = useSWR(isAdmin ? '/admin/approvals/count' : null, api, { shouldRetryOnError: false });
+  const count = pend ? pend.count : null;
 
-  if (!ready || !user || user.role !== 'ADMIN') return null;
+  if (!ready || !isAdmin) return null;
   const link = (href, label) => <Link href={href} className={path === href ? 'on' : ''}>{label}</Link>;
   return (
     <div className="ad">

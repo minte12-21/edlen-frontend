@@ -1,40 +1,24 @@
 'use client';
 import { useEffect } from 'react';
 import Link from 'next/link';
-import useSWR, { mutate } from 'swr';
-import { api, API_URL, getToken } from '@/lib/api';
+import useSWR, { useSWRConfig } from 'swr';
+import { api } from '@/lib/api';
 import { useApp } from '@/context/Providers';
-import { io } from 'socket.io-client';
 
 export default function AdminHome() {
   const { toast } = useApp();
-  
-  // SWR automatically caches this data
-  const { data: stats, error: err1 } = useSWR('/admin/stats', (url) => api(url));
-  const { data: prizesData, error: err2 } = useSWR('/admin/prizes', (url) => api(url));
-  const { data: mode, error: err3 } = useSWR('/admin/payment-mode', (url) => api(url));
+  const { mutate } = useSWRConfig();
+
+  // All of these update by themselves when anything changes
+  const { data: stats, error: err1 } = useSWR('/admin/stats', api);
+  const { data: prizesData, error: err2 } = useSWR('/admin/prizes', api);
+  const { data: mode, error: err3 } = useSWR('/admin/payment-mode', api);
 
   useEffect(() => {
     if (err1) toast(err1.message, 'error');
     if (err2) toast(err2.message, 'error');
     if (err3) toast(err3.message, 'error');
   }, [err1, err2, err3, toast]);
-
-  useEffect(() => {
-    const socket = io(API_URL, { auth: { token: getToken() } });
-    socket.emit('join:admin');
-
-    const refresh = () => {
-      mutate('/admin/stats');
-      mutate('/admin/prizes');
-      mutate('/admin/payment-mode');
-    };
-
-    socket.on('admin:update', refresh);
-    socket.on('number:taken', refresh);
-
-    return () => socket.disconnect();
-  }, []);
 
   async function switchMode(m) {
     try {
@@ -46,7 +30,7 @@ export default function AdminHome() {
 
   const prizes = prizesData?.prizes || [];
 
-  if (!stats && !err1) return <p className="ed-sub">Loading stats...</p>;
+  if (!stats && !err1) return <p className="ed-sub">Loading…</p>;
 
   return (
     <>

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import './PrizePanel.css';
 import Icon from './Icon';
 import StatusBadge from './StatusBadge';
@@ -12,30 +13,23 @@ import { useApp } from '@/context/Providers';
 
 // The main prize card: hero, stats, winning places, number list and the Pick button
 export default function PrizePanel({ prize }) {
-  const { t, lang, user, toast } = useApp();
+  const { t, lang, user } = useApp();
   const router = useRouter();
   const [showNums, setShowNums] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [initial, setInitial] = useState(null);
-  const [taken, setTaken] = useState(null);
 
   const soon = prize.status === 'COMING_SOON';
-  const canBuy = prize.status === 'ONGOING' && prize.left > 0;
+  const onSale = prize.status === 'ONGOING';
+  const canBuy = onSale && prize.left > 0;
 
-  async function loadTaken() {
-    try { setTaken(new Set((await api(`/prizes/${prize.id}/numbers`)).taken)); }
-    catch (e) { toast(e.message, 'error'); }
-  }
-  async function toggleNumbers() {
-    if (!showNums && !taken) await loadTaken();
-    setShowNums((v) => !v);
-  }
-  async function openSheet(n = null) {
-    if (!taken) await loadTaken();
-    setInitial(n);
-    setSheet(true);
-  }
+  // taken numbers: loaded ahead of time and refreshed live
+  const { data: nums } = useSWR(onSale ? `/prizes/${prize.id}/numbers` : null, api);
+  const taken = nums ? new Set(nums.taken) : null;
   const free = taken ? Array.from({ length: prize.totalCards }, (_, i) => i + 1).filter((n) => !taken.has(n)) : [];
+
+  function openSheet(n = null) { setInitial(n); setSheet(true); }
+
   const photo = img(prize.imageUrl);
   const soonMsg = lang === 'am' ? 'ይህ ሽልማት በቅርቡ ይከፈታል። ተመልሰው ይመልከቱ!' : 'This prize opens soon. Check back!';
 
@@ -84,7 +78,7 @@ export default function PrizePanel({ prize }) {
 
       {canBuy && (
         <>
-          <button className={`pp-toggle ${showNums ? 'open' : ''}`} onClick={toggleNumbers}>
+          <button className={`pp-toggle ${showNums ? 'open' : ''}`} onClick={() => setShowNums((v) => !v)}>
             {showNums ? t('hide_numbers') : t('show_numbers')} <Icon name="down" size={18} />
           </button>
           {showNums && (

@@ -1,29 +1,19 @@
 'use client';
-import { useEffect } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import './page.css';
 import Confetti from '@/components/Confetti';
-import { api, API_URL, getToken } from '@/lib/api';
+import { api } from '@/lib/api';
 import { rankLabel } from '@/lib/i18n';
 import { useApp } from '@/context/Providers';
-import { io } from 'socket.io-client';
 
 export default function Winners() {
   const { t, lang, user, ready } = useApp();
-  
-  const { data, error } = useSWR(ready && user ? '/me/winners' : null, (url) => api(url));
 
-  useEffect(() => {
-    const socket = io(API_URL, { auth: { token: getToken() } });
-    
-    // Refresh when a draw happens or admin updates
-    socket.on('admin:update', () => import('swr').then(({ mutate }) => mutate('/me/winners')));
+  // Updates by itself the moment a winner is drawn
+  const { data, error } = useSWR(ready && user ? '/me/winners' : null, api);
 
-    return () => socket.disconnect();
-  }, []);
-
-  if (!ready || (!data && !error)) return <p className="ed-sub">{t('loading')}</p>;
+  if (!ready || (user && !data && !error)) return <p className="ed-sub">{t('loading')}</p>;
   if (!user) return (
     <div className="ed-center" style={{ padding: '50px 10px' }}>
       <p className="ed-sub" style={{ marginBottom: 16 }}>{t('need_login')}</p>
